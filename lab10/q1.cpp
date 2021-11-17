@@ -1,52 +1,19 @@
-#include <bits/stdc++.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/ip.h>
-#include <netinet/if_ether.h>
+#include "common.h"
 
-using namespace std;
-
-string ether_ntoa(const struct ether_addr addr)
-{
-    static char buf[18];
-    char *buff = new char[18];
-    sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x",
-            addr.ether_addr_octet[0], addr.ether_addr_octet[1],
-            addr.ether_addr_octet[2], addr.ether_addr_octet[3],
-            addr.ether_addr_octet[4], addr.ether_addr_octet[5]);
-    return string(buf);
-}
-
-void print_ethernet_headers(ethhdr *eth)
-{
-    ether_addr src_addr, dst_addr;
-    memcpy(&src_addr, eth->h_source, sizeof(src_addr));
-    memcpy(&dst_addr, eth->h_dest, sizeof(dst_addr));
-    cout << "Ethernet Header" << endl;
-    cout << "Source MAC Address: " << ether_ntoa(src_addr) << endl;
-    cout << "Destination MAC Address: " << ether_ntoa(dst_addr) << endl;
-}
-
-void print_ip_headers(iphdr *ip)
-{
-    in_addr src_ip, dest_ip;
-    src_ip.s_addr = ip->saddr;
-    dest_ip.s_addr = ip->daddr;
-
-    cout << "Protocol: " << (int)ip->protocol << endl;
-    cout << "Source IP: " << inet_ntoa(src_ip) << endl;
-    cout << "Destination IP: " << inet_ntoa(dest_ip) << endl;
-}
+unordered_set<string> local_ips;
 
 int main()
 {
     int sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-
     if (sockfd < 0)
     {
         cerr << "Socket error" << endl;
         exit(EXIT_FAILURE);
     }
+    unordered_map<string, addr_info> ips = get_all_ips();
+    transform(ips.begin(), ips.end(), inserter(local_ips, local_ips.begin()), [](auto pair)
+              { return ifreq_to_ipstr(pair.second); });
+    ulong packet_count = 1;
     while (1)
     {
         unsigned char *buffer = new unsigned char[65536];
@@ -58,13 +25,18 @@ int main()
             cerr << "Recvfrom error" << endl;
             exit(EXIT_FAILURE);
         }
-        iphdr *ip = (struct iphdr *)(buffer + sizeof(struct ethhdr));
-        ethhdr *eth = (struct ethhdr *)buffer;
-        if (ip->protocol == 1)
-        {
-            cout << "ICMP Packet" << endl;
-            print_ip_headers(ip);
-            print_ethernet_headers(eth);
-        }
+        iphdr *iphdr = (struct iphdr *)(buffer + sizeof(struct ethhdr));
+        ethhdr *ethhdr = (struct ethhdr *)buffer;
+        in_addr src_ip, dst_ip;
+        src_ip.s_addr = iphdr->saddr;
+        dst_ip.s_addr = iphdr->daddr;
+        if (local_ips.find(inet_ntoa(src_ip)) != local_ips.end())
+            cout << "[Packet #" << packet_count << ": Outgoing packet]" << endl;
+        else
+            cout << "[Packet #" << packet_count << ": Incoming packet]" << endl;
+        print_ip_headers(iphdr);
+        print_ethernet_headers(ethhdr);
+        cout << endl;
+        packet_count++;
     }
 }
