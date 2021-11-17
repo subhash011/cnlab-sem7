@@ -14,8 +14,8 @@ BINS=$(SRC:.cpp=)
 host=localhost
 machines=r1
 r1_port:=14601
-r1=q1.cpp q2.cpp q3.cpp Makefile
-submission=q1.cpp q2.cpp q3.cpp Makefile
+r1=q1.cpp q2.cpp q3.cpp common.h Makefile
+submission=q1.cpp q2.cpp q3.cpp common.h Makefile
 
 
 # Copy the files to the machines and compile them in the machines.
@@ -52,7 +52,7 @@ compile_%:
 	expect "~"; \
 	send "clear\n"; \
 	expect "~"; \
-	send "sudo ./q1\n"; \
+	send "sudo ./q3\n"; \
 	interact'; \
 
 # Copy all the required files to each of the three machines.

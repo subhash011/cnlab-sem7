@@ -5,8 +5,10 @@
 #include <netdb.h>
 #include <net/if.h>
 #include <netinet/ip.h>
+#include <linux/if_packet.h>
 #include <netinet/if_ether.h>
 #include <sys/ioctl.h>
+#include <unistd.h>
 
 using namespace std;
 
@@ -15,6 +17,7 @@ typedef struct addr_info
     string if_name;
     sockaddr ip_addr;
     sockaddr mac_addr;
+    int if_index;
 } addr_info;
 
 unordered_map<string, addr_info> get_all_ips()
@@ -57,6 +60,7 @@ unordered_map<string, addr_info> get_all_ips()
         }
         info.mac_addr = ifr[i].ifr_ifru.ifru_hwaddr;
         info.if_name = ifr[i].ifr_name;
+        info.if_index = ifr[i].ifr_ifindex;
         ips[ifr[i].ifr_name] = info;
     }
     return ips;
@@ -73,11 +77,11 @@ string ifreq_to_ipstr(addr_info info)
 
 string ifreq_to_macstr(addr_info info)
 {
-    char buffer[6];
+    char buffer[18];
     sprintf(buffer, "%02X:%02X:%02X:%02X:%02X:%02X",
-            (unsigned char)info.mac_addr.sa_data[0], (unsigned char)info.mac_addr.sa_data[1],
-            (unsigned char)info.mac_addr.sa_data[2], (unsigned char)info.mac_addr.sa_data[3],
-            (unsigned char)info.mac_addr.sa_data[4], (unsigned char)info.mac_addr.sa_data[5]);
+            (uint8_t)info.mac_addr.sa_data[0], (uint8_t)info.mac_addr.sa_data[1],
+            (uint8_t)info.mac_addr.sa_data[2], (uint8_t)info.mac_addr.sa_data[3],
+            (uint8_t)info.mac_addr.sa_data[4], (uint8_t)info.mac_addr.sa_data[5]);
     return string(buffer);
 }
 
@@ -96,11 +100,13 @@ void print_ethernet_headers(ethhdr *eth)
     ether_addr src_addr, dst_addr;
     memcpy(&src_addr, eth->h_source, sizeof(src_addr));
     memcpy(&dst_addr, eth->h_dest, sizeof(dst_addr));
-    string protocol(getprotobynumber(eth->h_proto)->p_name);
+    protoent *proto = getprotobynumber(eth->h_proto);
+    string protocol = proto ? proto->p_name : "unknown";
     transform(protocol.begin(), protocol.end(), protocol.begin(), ::toupper);
-    cout << "> Ethernet Header Protocol: " << protocol << endl;
-    cout << "> MAC Address: " << ether_ntoa(src_addr) << " (src)"
-         << " -> " << ether_ntoa(dst_addr) << " (dest)" << endl;
+    cout << "-> Ethernet Headers" << endl;
+    cout << "   |- Protocol: " << protocol << endl;
+    cout << "   |- Source MAC address: " << ether_ntoa(src_addr) << endl;
+    cout << "   |- Destination MAC address: " << ether_ntoa(dst_addr) << endl;
 }
 
 void print_ip_headers(iphdr *ip)
@@ -108,9 +114,11 @@ void print_ip_headers(iphdr *ip)
     in_addr src_ip, dest_ip;
     src_ip.s_addr = ip->saddr;
     dest_ip.s_addr = ip->daddr;
-    string protocol(getprotobynumber(ip->protocol)->p_name);
+    protoent *proto = getprotobynumber(ip->protocol);
+    string protocol = proto ? proto->p_name : "unknown";
     transform(protocol.begin(), protocol.end(), protocol.begin(), ::toupper);
-    cout << "> IP Header Protocol: " << protocol << endl;
-    cout << "> IP address: " << inet_ntoa(src_ip) << " (src)"
-         << " -> " << inet_ntoa(dest_ip) << " (dest)" << endl;
+    cout << "-> IP Headers" << endl;
+    cout << "   |- Protocol: " << protocol << endl;
+    cout << "   |- Source IP address: " << inet_ntoa(src_ip) << endl;
+    cout << "   |- Destination IP address: " << inet_ntoa(dest_ip) << endl;
 }
