@@ -11,11 +11,11 @@ void log(uint8_t *buffer)
     src_ip.s_addr = iphdr->saddr;
     dst_ip.s_addr = iphdr->daddr;
     if (inet_ntoa(src_ip) == eth1_ip)
-        cout << "[Packet #" << packet_count << " - Outgoing packet]" << endl;
+        cout << "[Packet #" << packet_count++ << " - Outgoing packet]" << endl;
     else if (inet_ntoa(dst_ip) == eth1_ip)
-        cout << "[Packet #" << packet_count << " - Incoming packet]" << endl;
+        cout << "[Packet #" << packet_count++ << " - Incoming packet]" << endl;
     else
-        cout << "[Packet #" << packet_count << " - FORWARDING]" << endl;
+        cout << "[Packet #" << packet_count++ << " - FORWARDING]" << endl;
     print_ethernet_headers(ethhdr);
     print_ip_headers(iphdr);
     cout << endl;
@@ -32,22 +32,19 @@ int main()
     }
     eth1_ip = ifreq_to_ipstr(get_all_ips()["eth1"]);
     sockaddr_ll sll;
-    socklen_t sll_len = sizeof(sll);
     sll.sll_family = AF_PACKET;
     sll.sll_ifindex = if_nametoindex("eth1");
     sll.sll_protocol = htons(ETH_P_ALL);
-    if (bind(sockfd, (sockaddr *)&sll, sll_len) < 0)
+    if (bind(sockfd, (sockaddr *)&sll, sizeof(sockaddr_ll)) < 0)
     {
         cerr << "Bind error: " << strerror(errno) << endl;
         exit(EXIT_FAILURE);
     }
     uint8_t *buffer = new uint8_t[65536];
-    struct sockaddr saddr;
-    socklen_t saddr_len = sizeof(saddr);
     while (1)
     {
         memset(buffer, 0, 65536);
-        int len = recvfrom(sockfd, buffer, 65536, 0, (sockaddr *)&saddr, &saddr_len);
+        int len = recvfrom(sockfd, buffer, 65536, 0, nullptr, nullptr);
         if (len < 0)
         {
             cerr << "Recvfrom error" << endl;
@@ -55,7 +52,6 @@ int main()
         }
         log(buffer);
         cout << endl;
-        packet_count++;
     }
     return 0;
 }
