@@ -12,96 +12,37 @@
 
 using namespace std;
 
-typedef struct addr_info
-{
-    string if_name;
-    sockaddr ip_addr;
-    sockaddr mac_addr;
-    int if_index;
-} addr_info;
+ulong packet_count = 1;
 
-unordered_map<string, addr_info> get_all_ips()
-{
-    unordered_map<string, addr_info> ips;
-    ifconf ifc;
-    ifreq ifr[NI_MAXHOST];
-    int addr;
-    int sd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sd < 0)
-    {
-        cerr << "Socket creation failed" << endl;
-        exit(EXIT_FAILURE);
-    }
-    ifc.ifc_len = sizeof(ifr);
-    ifc.ifc_ifcu.ifcu_buf = (caddr_t)ifr;
-    if (ioctl(sd, SIOCGIFCONF, &ifc) < 0)
-    {
-        cerr << "ioctl error: " << strerror(errno) << endl;
-        exit(EXIT_FAILURE);
-    }
-
-    int ifc_num = ifc.ifc_len / sizeof(struct ifreq);
-    for (int i = 0; i < ifc_num; i++)
-    {
-        addr_info info;
-        addr = ifr[i].ifr_addr.sa_family;
-        if (addr != AF_INET)
-            continue;
-        if (ioctl(sd, SIOCGIFADDR, &ifr[i]) < 0)
-        {
-            cerr << "ioctl error: " << strerror(errno) << endl;
-            exit(EXIT_FAILURE);
-        }
-        info.ip_addr = ifr[i].ifr_ifru.ifru_addr;
-        if (ioctl(sd, SIOCGIFHWADDR, &ifr[i]) < 0)
-        {
-            cerr << "ioctl error: " << strerror(errno) << endl;
-            exit(EXIT_FAILURE);
-        }
-        info.mac_addr = ifr[i].ifr_ifru.ifru_hwaddr;
-        info.if_name = ifr[i].ifr_name;
-        info.if_index = ifr[i].ifr_ifindex;
-        ips[ifr[i].ifr_name] = info;
-    }
-    return ips;
-}
-
-string ifreq_to_ipstr(addr_info info)
-{
-    string ipstr = "";
-    sockaddr *addr = &info.ip_addr;
-    sockaddr_in *addr_in = (sockaddr_in *)addr;
-    ipstr = inet_ntoa(addr_in->sin_addr);
-    return ipstr;
-}
-
-string ifreq_to_macstr(addr_info info)
-{
-    char buffer[18];
-    sprintf(buffer, "%02X:%02X:%02X:%02X:%02X:%02X",
-            (uint8_t)info.mac_addr.sa_data[0], (uint8_t)info.mac_addr.sa_data[1],
-            (uint8_t)info.mac_addr.sa_data[2], (uint8_t)info.mac_addr.sa_data[3],
-            (uint8_t)info.mac_addr.sa_data[4], (uint8_t)info.mac_addr.sa_data[5]);
-    return string(buffer);
-}
-
+/**
+ * @brief Returns the MAC address, given the ether_addr struct
+ * @param addr The ether_addr struct
+ */
 string ether_ntoa(const struct ether_addr addr)
 {
     char buffer[18];
-    sprintf(buffer, "%02x:%02x:%02x:%02x:%02x:%02x",
+    // convert each octet to hex
+    sprintf(buffer, "%02X:%02X:%02X:%02X:%02X:%02X",
             addr.ether_addr_octet[0], addr.ether_addr_octet[1],
             addr.ether_addr_octet[2], addr.ether_addr_octet[3],
             addr.ether_addr_octet[4], addr.ether_addr_octet[5]);
     return string(buffer);
 }
 
+/**
+ * @brief Prints the ethernet headers
+ * @param eth The ethernet header struct
+ */
 void print_ethernet_headers(ethhdr *eth)
 {
     ether_addr src_addr, dst_addr;
+    // Copy the source and destination MAC addresses
     memcpy(&src_addr, eth->h_source, sizeof(src_addr));
     memcpy(&dst_addr, eth->h_dest, sizeof(dst_addr));
+    // Get the protocol from the ethernet header
     protoent *proto = getprotobynumber(eth->h_proto);
     string protocol = proto ? proto->p_name : "unknown";
+    // convert the protocol to capital letters
     transform(protocol.begin(), protocol.end(), protocol.begin(), ::toupper);
     cout << "-> Ethernet Headers" << endl;
     cout << "   |- Protocol: " << protocol << endl;
@@ -109,16 +50,40 @@ void print_ethernet_headers(ethhdr *eth)
     cout << "   |- Destination MAC address: " << ether_ntoa(dst_addr) << endl;
 }
 
+/**
+ * @brief Prints the IP headers
+ * @param iph The IP header struct
+ */
 void print_ip_headers(iphdr *ip)
 {
     in_addr src_ip, dest_ip;
+    // Copy the source and destination IP addresses
     src_ip.s_addr = ip->saddr;
     dest_ip.s_addr = ip->daddr;
+    // Get the protocol from the IP header
     protoent *proto = getprotobynumber(ip->protocol);
     string protocol = proto ? proto->p_name : "unknown";
+    // convert the protocol to capital letters
     transform(protocol.begin(), protocol.end(), protocol.begin(), ::toupper);
     cout << "-> IP Headers" << endl;
     cout << "   |- Protocol: " << protocol << endl;
     cout << "   |- Source IP address: " << inet_ntoa(src_ip) << endl;
     cout << "   |- Destination IP address: " << inet_ntoa(dest_ip) << endl;
+}
+
+/**
+ * @brief Reads ip headers and ethernet headers from the given buffer
+ * and prints them out.
+ * @param buffer A character buffer containing the packet
+ */
+void log(uint8_t *buffer)
+{
+    // IP headers come after the ethernet headers so offset the
+    // pointer by the size of the ethernet headers.
+    iphdr *iphdr = (struct iphdr *)(buffer + sizeof(struct ethhdr));
+    ethhdr *ethhdr = (struct ethhdr *)buffer;
+    cout << "[Packet #" << packet_count++ << "]" << endl;
+    print_ethernet_headers(ethhdr);
+    print_ip_headers(iphdr);
+    cout << endl;
 }
