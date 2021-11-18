@@ -5,7 +5,7 @@ for R in 0.1 1.0 10.0 100.0
 do
 	rm -rf tempOut
 	timeout 3s ./rr "$R" < arrivals.txt > tempOut
-	out=`echo rr_"$R"`
+	out=`echo rr_"$R".txt`
 	val=`diff -B -U 0 tempOut "$out" | grep ^@ | wc -l`
 	if [ $val -eq 0 ]
 	then
