@@ -2,24 +2,49 @@
 
 #define ETH1 0
 #define ETH2 1
+#define H1_IP "192.168.20.2"
+#define R2_IP "192.168.30.2"
 
 ulong packet_count = 1;
 
 void forward(uint8_t *buffer)
 {
-    iphdr *iphdr = (struct iphdr *)(buffer + sizeof(struct ethhdr));
+    iphdr *ip_hdr = (struct iphdr *)(buffer + sizeof(struct ethhdr));
     ethhdr *ethhdr = (struct ethhdr *)buffer;
     cout << "[Packet #" << packet_count << " - FORWARDING]" << endl;
     print_ethernet_headers(ethhdr);
-    print_ip_headers(iphdr);
+    print_ip_headers(ip_hdr);
     cout << endl;
+}
+
+void get_if_hwaddr(string ifname, uint8_t *hwaddr)
+{
+    struct ifreq ifr;
+    int fd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+    if (fd < 0)
+    {
+        perror("socket");
+        exit(1);
+    }
+    strcpy(ifr.ifr_name, ifname.c_str());
+    if (ioctl(fd, SIOCGIFHWADDR, &ifr) < 0)
+    {
+        perror("ioctl");
+        exit(1);
+    }
+    close(fd);
+    uint8_t *ptr = reinterpret_cast<uint8_t *>(ifr.ifr_hwaddr.sa_data);
+    for (int i = 0; i < 6; i++)
+        hwaddr[i] = ptr[i];
 }
 
 int main()
 {
     int recv_sds[2], send_sds[2];
     sockaddr_ll recv_sll[2], send_sll[2];
-    struct ifreq ifr;
+    uint8_t if_macs[2][ETH_ALEN];
+    uint8_t r2_mac[ETH_ALEN] = {0x08, 0x00, 0x27, 0xA6, 0xEF, 0x5D};
+    uint8_t h1_mac[ETH_ALEN] = {0x08, 0x00, 0x27, 0x63, 0xA5, 0xD5};
     recv_sds[ETH1] = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
     recv_sds[ETH2] = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
     send_sds[ETH1] = socket(AF_PACKET, SOCK_RAW, IPPROTO_RAW);
@@ -29,6 +54,8 @@ int main()
         cerr << "Socket error" << endl;
         exit(EXIT_FAILURE);
     }
+    get_if_hwaddr("eth1", if_macs[ETH1]);
+    get_if_hwaddr("eth2", if_macs[ETH2]);
     recv_sll[ETH1].sll_family = recv_sll[ETH2].sll_family = send_sll[ETH1].sll_family = send_sll[ETH2].sll_family = AF_PACKET;
     recv_sll[ETH1].sll_ifindex = send_sll[ETH1].sll_ifindex = if_nametoindex("eth1");
     recv_sll[ETH2].sll_ifindex = send_sll[ETH2].sll_ifindex = if_nametoindex("eth2");
@@ -46,7 +73,8 @@ int main()
     }
     uint8_t *buffer = new uint8_t[65536];
     int len;
-    ethhdr *ethhdr;
+    ethhdr *eth_hdr;
+    iphdr *ip_hdr;
     while (1)
     {
         /*****************************************From h1 to r2**********************************************/
@@ -57,9 +85,12 @@ int main()
             cerr << "Recvfrom error" << endl;
             exit(EXIT_FAILURE);
         }
+        ip_hdr = (struct iphdr *)(buffer + sizeof(eth_hdr));
+        eth_hdr = (struct ethhdr *)buffer;
+        memcpy(eth_hdr->h_source, if_macs[ETH2], ETH_ALEN);
+        memcpy(eth_hdr->h_dest, r2_mac, ETH_ALEN);
+        memcpy(send_sll[ETH2].sll_addr, r2_mac, ETH_ALEN);
         forward(buffer);
-        ethhdr = (struct ethhdr *)buffer;
-        memcpy(send_sll[ETH2].sll_addr, ethhdr->h_source, ETH_ALEN);
         if (sendto(send_sds[ETH2], buffer, len, 0, (sockaddr *)&send_sll[ETH2], sizeof(sockaddr_ll)) < 0)
         {
             cerr << "sendto error: " << strerror(errno) << endl;
@@ -77,8 +108,10 @@ int main()
             exit(EXIT_FAILURE);
         }
         forward(buffer);
-        ethhdr = (struct ethhdr *)buffer;
-        memcpy(send_sll[ETH1].sll_addr, ethhdr->h_source, ETH_ALEN);
+        eth_hdr = (struct ethhdr *)buffer;
+        memcpy(eth_hdr->h_source, if_macs[ETH1], ETH_ALEN);
+        memcpy(eth_hdr->h_dest, h1_mac, ETH_ALEN);
+        memcpy(send_sll[ETH1].sll_addr, h1_mac, ETH_ALEN);
         if (sendto(send_sds[ETH1], buffer, len, 0, (sockaddr *)&send_sll[ETH1], sizeof(sockaddr_ll)) < 0)
         {
             cerr << "sendto error: " << strerror(errno) << endl;
@@ -96,8 +129,8 @@ int main()
         //     exit(EXIT_FAILURE);
         // }
         // forward(buffer);
-        // ethhdr = (struct ethhdr *)buffer;
-        // memcpy(send_sll[ETH1].sll_addr, ethhdr->h_source, ETH_ALEN);
+        // eth_hdr = (struct eth_hdr *)buffer;
+        // memcpy(send_sll[ETH1].sll_addr, eth_hdr->h_source, ETH_ALEN);
         // if (sendto(send_sds[ETH1], buffer, len, 0, (sockaddr *)&send_sll[ETH1], sizeof(sockaddr_ll)) < 0)
         // {
         //     cerr << "sendto error: " << strerror(errno) << endl;
