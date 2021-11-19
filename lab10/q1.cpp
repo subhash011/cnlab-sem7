@@ -5,7 +5,8 @@ int main()
     int sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
     if (sockfd < 0)
     {
-        cerr << "Socket error" << endl;
+        cerr << "Socket error: " << strerror(errno) << endl;
+        close(sockfd);
         exit(EXIT_FAILURE);
     }
     // buffer to store the packet
@@ -18,6 +19,7 @@ int main()
         if (len < 0)
         {
             cerr << "Recvfrom error: " << strerror(errno) << endl;
+            close(sockfd);
             exit(EXIT_FAILURE);
         }
         // print the details of the packet

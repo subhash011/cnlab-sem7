@@ -2,13 +2,29 @@
 
 #define ETH1 0
 #define ETH2 1
+#define closeall()      \
+    close(send_sd);     \
+    close(recv_sds[0]); \
+    close(recv_sds[1]);
 
+uint32_t get_if_ip(string ifname)
+{
+    struct ifreq ifr;
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    ifr.ifr_addr.sa_family = AF_INET;
+    strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ - 1);
+    ioctl(fd, SIOCGIFADDR, &ifr);
+    close(fd);
+    return ((sockaddr_in *)&ifr.ifr_ifru.ifru_addr)->sin_addr.s_addr;
+}
 int main()
 {
     int recv_sds[2], send_sd, len;
     sockaddr_ll recv_slls[2], send_slls[2];
-    fd_set readfds;
     uint8_t *buffer = new uint8_t[65536];
+    ifreq ifr;
+    uint32_t eth1_ip = get_if_ip("eth1");
+    uint32_t eth2_ip = get_if_ip("eth2");
 
     // create the sockets, ETH_P_IP tells the socket to only listen to
     // incoming IP packets
@@ -18,7 +34,8 @@ int main()
     send_sd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
     if (recv_sds[ETH1] < 0 || recv_sds[ETH2] < 0 || send_sd < 0)
     {
-        cerr << "Socket error" << endl;
+        cerr << "Socket error: " << strerror(errno) << endl;
+        closeall();
         exit(EXIT_FAILURE);
     }
     recv_slls[ETH1] = send_slls[ETH1] = (sockaddr_ll){
@@ -35,13 +52,16 @@ int main()
     if (bind(recv_sds[ETH1], (sockaddr *)&recv_slls[ETH1], sizeof(sockaddr_ll)) < 0)
     {
         cerr << "Bind error (eth1): " << strerror(errno) << endl;
+        closeall();
         exit(EXIT_FAILURE);
     }
     if (bind(recv_sds[ETH2], (sockaddr *)&recv_slls[ETH2], sizeof(sockaddr_ll)) < 0)
     {
         cerr << "Bind error (eth2): " << strerror(errno) << endl;
+        closeall();
         exit(EXIT_FAILURE);
     }
+    fd_set readfds;
     // clear the readfds set
     FD_ZERO(&readfds);
     // get the max file descriptor
@@ -74,6 +94,14 @@ int main()
             len = recvfrom(recv_sds[ETH2], buffer, 65536, 0, nullptr, nullptr);
             send_packet = true;
         }
+        iphdr *ip_hdr = (iphdr *)(buffer + sizeof(ethhdr));
+        // if the packet is for eth1 or eth2, ignore it
+        if (ip_hdr->daddr == eth1_ip || ip_hdr->daddr == eth2_ip)
+        {
+            // print the details of the packet
+            log(buffer);
+            send_packet = false;
+        }
         // if the packet was received by some other interface, ignore it
         if (!send_packet)
             continue;
@@ -84,7 +112,6 @@ int main()
         }
         // print the details of the packet
         log(buffer);
-        iphdr *ip_hdr = (struct iphdr *)(buffer + sizeof(ethhdr));
         // store the destination IP address in the struct
         sockaddr_in saddr = (sockaddr_in){.sin_family = AF_INET, .sin_addr = {.s_addr = ip_hdr->daddr}};
         // send the packet to the destination using the send_sd socket and the saddr struct
@@ -95,8 +122,6 @@ int main()
         }
     }
     // close all sockets
-    close(send_sd);
-    close(recv_sds[0]);
-    close(recv_sds[1]);
+    closeall();
     return 0;
 }

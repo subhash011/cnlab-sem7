@@ -3,10 +3,10 @@
 int main()
 {
     struct ifreq ifr;
-    int sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+    int sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP));
     if (sockfd < 0)
     {
-        cerr << "Socket error" << endl;
+        cerr << "Socket error: " << strerror(errno) << endl;
         exit(EXIT_FAILURE);
     }
     // This struct is tells the socket to listen to all packets
@@ -15,11 +15,13 @@ int main()
     sll.sll_family = AF_PACKET;
     // listens only eth1
     sll.sll_ifindex = if_nametoindex("eth1");
-    sll.sll_protocol = htons(ETH_P_ALL);
+    // ETH_P_IP tells the socket to only listen to incoming IP packets
+    sll.sll_protocol = htons(ETH_P_IP);
     // bind the socket to the interface using the sockaddr_ll struct
     if (bind(sockfd, (sockaddr *)&sll, sizeof(sockaddr_ll)) < 0)
     {
         cerr << "Bind error: " << strerror(errno) << endl;
+        close(sockfd);
         exit(EXIT_FAILURE);
     }
     // buffer to store the packet
@@ -32,6 +34,7 @@ int main()
         if (len < 0)
         {
             cerr << "Recvfrom error: " << strerror(errno) << endl;
+            close(sockfd);
             exit(EXIT_FAILURE);
         }
         // print the details of the packet

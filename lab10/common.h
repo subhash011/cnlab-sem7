@@ -18,7 +18,7 @@ ulong packet_count = 1;
  * @brief Returns the MAC address, given the ether_addr struct
  * @param addr The ether_addr struct
  */
-string ether_ntoa(const struct ether_addr addr)
+string ether_ntoa(const ether_addr addr)
 {
     char buffer[18];
     // convert each octet to hex
@@ -80,10 +80,10 @@ void log(uint8_t *buffer)
 {
     // IP headers come after the ethernet headers so offset the
     // pointer by the size of the ethernet headers.
-    iphdr *iphdr = (struct iphdr *)(buffer + sizeof(struct ethhdr));
-    ethhdr *ethhdr = (struct ethhdr *)buffer;
+    iphdr *ip_hdr = (iphdr *)(buffer + sizeof(ethhdr));
+    ethhdr *eth_hdr = (ethhdr *)buffer;
     cout << "[Packet #" << packet_count++ << "]" << endl;
-    print_ethernet_headers(ethhdr);
-    print_ip_headers(iphdr);
+    print_ethernet_headers(eth_hdr);
+    print_ip_headers(ip_hdr);
     cout << endl;
 }

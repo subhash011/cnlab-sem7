@@ -15,7 +15,7 @@ host=localhost
 machines=r1
 r1_port:=14601
 r1=q1.cpp q2.cpp q3.cpp common.h Makefile
-submission=q1.cpp q2.cpp q3.cpp common.h Makefile
+submission=connect.sh q1.cpp q2.cpp q3.cpp common.h Makefile 111801042-lab10.pdf
 
 
 # Copy the files to the machines and compile them in the machines.
@@ -31,8 +31,8 @@ local: $(BINS)
 	g++ -o $@ $<
 
 .PHONY: compress
-compress:
-	zip -r 111801042.zip ${submission}
+submission:
+	zip -r 111801042-lab10.zip ${submission}
 
 # Compile all the files in the VMs
 .PHONY: compile
@@ -51,8 +51,6 @@ compile_%:
 	send "make local\n"; \
 	expect "~"; \
 	send "clear\n"; \
-	expect "~"; \
-	send "sudo ./q3\n"; \
 	interact'; \
 
 # Copy all the required files to each of the three machines.
@@ -73,7 +71,7 @@ clean: $(addprefix clean_, ${machines})
 	
 .PHONY: clean_local
 clean_local:
-	rm -f $(BINS)
+	rm -f $(BINS) 111801042-lab10.zip
 
 clean_%: 
 	@/usr/bin/expect -c \
