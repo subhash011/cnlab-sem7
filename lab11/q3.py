@@ -4,17 +4,19 @@ def read_private_key(username):
         return int(d), int(n)
 
 
-def convert_m_to_str(m):
-    m = str(hex(m))[2:]
-    res = ""
+def get_k(n):
+    k = 0
+    while True:
+        if 2**k > n:
+            return k - 1
+        k += 1
 
-    x = 0
-    while x < len(m)-1:
-        cur_hex_val = m[x] + m[x+1]
-        cur_hex_val = int(cur_hex_val, 16)
-        res += chr(cur_hex_val)
-        x += 2
-    return res
+
+def convert_m_to_str(m, n):
+    binary_int = int(m, 2)
+    byte_number = binary_int.bit_length() + 7 // 8
+    bin_arr = binary_int.to_bytes(byte_number, 'big')
+    return bin_arr.decode()
 
 
 def decrypt(c, d, n):
@@ -26,7 +28,13 @@ if __name__ == '__main__':
         lines = f.readlines()
     d, n = read_private_key('B')
     m_decrypted = ""
-    for m_encrypted in lines:
-        decoded = decrypt(int(m_encrypted), d, n)
-        m_decrypted += convert_m_to_str(decoded)
-    print("Decrypted message: " + m_decrypted)
+    itr = enumerate(lines)
+    _, last_block = next(itr)
+    last_block_len = decrypt(int(last_block), d, n)
+    for i, line in itr:
+        decoded = decrypt(int(line), d, n)
+        if i == len(lines) - 1:
+            m_decrypted += bin(decoded)[2:].zfill(last_block_len)
+            break
+        m_decrypted += bin(decoded)[2:].zfill(get_k(n))
+    print(f"Decrypted message: {convert_m_to_str(m_decrypted, n)}")
