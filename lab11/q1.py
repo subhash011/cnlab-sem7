@@ -25,7 +25,6 @@ def modular_inverse(a, m):
     """
     Calculates the modular inverse of a modulo m.
     """
-    # return pow(a, -1, m)
     g, x, _ = extended_gcd(a, m)
     if g != 1:
         return None
@@ -33,35 +32,54 @@ def modular_inverse(a, m):
 
 
 def generate_rsa(p, q):
+    """
+    Generates a key pair, given two primes p and q.
+    Note: 
+    """
+    # the modulus n is the product of p and q
     n = p * q
-    z = (p - 1) * (q - 1)
-    d = 13
-    while d < z:
-        if gcd(d, z) == 1:
+    # the totient of n is (p-1)*(q-1)
+    totient = (p - 1) * (q - 1)
+    # the public exponent (used in encryption)
+    e = 5
+    while e < totient:
+        # find a "e" that is relatively prime to z
+        if gcd(e, totient) == 1:
             break
-        d += 1
-    e = modular_inverse(d, z)
+        e += 1
+    # d is the secret exponent (used in decryption)
+    d = modular_inverse(e, totient)
     return n, e, d
 
 
 def generate_primes():
+    """
+    Returns two primes p and q of k/2 bits each.
+    """
+    # generate two primes of length k/2 bits each.
     p = generate_prime(k//2)
     q = generate_prime(k//2)
     return p, q
 
 
 def write_key_user(username):
+    """
+    Given a username, it writes the two key pairs to their
+    respective files.
+    """
+    # generate two large primes
     p, q = generate_primes()
+    # generate parameters for RSA
     n, e, d = generate_rsa(p, q)
-    print(f"User: {username}")
-    print("Public key: (e, n) = ({}, {})".format(e, n))
-    print("Private key: (d, n) = ({}, {})".format(d, n))
     with open(f'{username}.pub', "w") as f:
         f.write(f"{e} {n}")
     with open(f'{username}.pri', "w") as f:
         f.write(f"{d} {n}")
+    print(f"Private and public keys for {username} successfully generated.")
 
 
 if __name__ == '__main__':
+    # write keys for A to A.pub and A.pri
     write_key_user('A')
+    # write keys for B to B.pub and B.pri
     write_key_user('B')
