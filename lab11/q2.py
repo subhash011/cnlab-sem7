@@ -1,5 +1,4 @@
 from utils import *
-from hashlib import sha1
 
 
 def msg2blocks(m):
@@ -21,12 +20,10 @@ def hash2int(hash):
     return int(bin_str, 2)
 
 
-def encrypt(m, e, n):
-    return pow(m, e, n)
+def encrypt(m, e, n): return pow(m, e, n)
 
 
-def sign(m, d, n):
-    return pow(m, d, n)
+def sign(m, d, n): return pow(m, d, n)
 
 
 if __name__ == '__main__':
@@ -43,18 +40,13 @@ if __name__ == '__main__':
 
     encrypted_msg = ""
     for block in msg2blocks(msg):
+        # sign the block
+        block = sign(block, d, n_a)
         # encrypt the block
         encrypted_block = encrypt(block, e, n_b)
         # append the encrypted block to the encrypted message
         encrypted_msg += str(encrypted_block) + " "
-
-    # calculate sha-1 hash of the message
-    msg_digest = sha1(msg.encode()).hexdigest()
-    # convert the hash to an integer
-    msg_digest = hash2int(msg_digest)
-    # sign the message digest
-    signature = sign(msg_digest, d, n_a)
     with open('secret.txt', 'w') as f:
         # write the encrypted message and the signature to secret.txt
-        f.write(encrypted_msg + '\n' + str(signature))
-    print("Encrypted message and signature written to secret.txt")
+        f.write(encrypted_msg)
+    print("Signed and encrypted message written to secret.txt")

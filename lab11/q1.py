@@ -1,8 +1,9 @@
+import sys
 from utils import *
 from utils import generate_prime
 from math import gcd
 
-k = 512
+k = 1024
 
 
 def extended_gcd(a, b):

@@ -55,13 +55,13 @@ def is_prime(n, k=256):
     return True
 
 
-def generate_prime(n_bits=512):
+def generate_prime(n_bits=512, not_match=None):
     """
     Generates a prime number of n_bits bits.
     """
     p = 1
     # until p is a prime number
-    while not is_prime(p):
+    while not is_prime(p) and p != not_match:
         # generate a random number of n_bits bits
         p = getrandbits(n_bits)
         # make sure it's odd and make the first bit 1 so that it

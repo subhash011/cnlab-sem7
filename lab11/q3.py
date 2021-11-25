@@ -1,5 +1,4 @@
 from utils import *
-from hashlib import sha1
 
 
 def bin2str(s):
@@ -20,8 +19,10 @@ def bin2str(s):
         return None
 
 
-def decrypt(c, d, n):
-    return pow(c, d, n)
+def decrypt(c, d, n): return pow(c, d, n)
+
+
+def unsign(m, e, n): return pow(m, e, n)
 
 
 if __name__ == '__main__':
@@ -38,24 +39,18 @@ if __name__ == '__main__':
     encrypted_m = lines[0].split()
     for i, block in enumerate(encrypted_m):
         # for each encrypted block, decrypt it
-        decrypted_block = decrypt(int(block), d, n_b)
+        block = decrypt(int(block), d, n_b)
+        # since each block was signed, we use the unsign function
+        # to verify the signature
+        decrypted_block = unsign(int(block), e, n_a)
         # since each block is pre and post padded with a 1, ignore it.
         decrypted_msg += bin(decrypted_block)[3:-1]
 
     # convert the binary string to a string of ASCII characters
     decrypted_msg = bin2str(decrypted_msg)
-    # if the message was tampered with, the decrypted message will be None
     if decrypted_msg is None:
-        print("Decryption failed")
-        exit(1)
-    # calculate the sha-1 hash of the decrypted message
-    hsh = sha1(decrypted_msg.encode()).hexdigest()
-    # decrypt to get the message digest from A
-    md = decrypt(int(lines[1]), e, n_a)
-    decrypted_hsh = bin2str(bin(md)[2:])
-    # verify the signature i.e if the hash of the decrypted message
-    # is the same as the decrypted hash from A
-    if (hsh == decrypted_hsh):
-        print(decrypted_msg)
+        # if the decrypted message is None, then the message was
+        # not properly decrypted or the signature was invalid
+        print("Message not verfied!")
     else:
-        print("Message not verified!")
+        print(decrypted_msg)
