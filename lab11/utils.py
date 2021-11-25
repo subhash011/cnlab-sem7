@@ -1,17 +1,8 @@
-from random import getrandbits, randint
+import random
 
+random.seed(10)
 
-def get_k(n):
-    """
-    Finds the max block size for encryption.
-    It finds the max k such that 2^k < n where n is the modulus
-    of the RSA encryption.
-    """
-    k = 0
-    while True:
-        if 2**k > n:
-            return k - 1
-        k += 1
+modulus_size = 1024
 
 
 def read_public_key(username):
@@ -43,7 +34,7 @@ def is_prime(n, k=256):
         s += 1
         d //= 2
     for _ in range(k):
-        a = randint(2, n - 1)
+        a = random.randint(2, n - 1)
         x = pow(a, d, n)
         if x == 1 or x == n - 1:
             continue
@@ -63,7 +54,7 @@ def generate_prime(n_bits=512, not_match=None):
     # until p is a prime number
     while not is_prime(p) and p != not_match:
         # generate a random number of n_bits bits
-        p = getrandbits(n_bits)
+        p = random.getrandbits(n_bits)
         # make sure it's odd and make the first bit 1 so that it
         # does not have leading zeros
         p |= (1 << n_bits - 1) | 1

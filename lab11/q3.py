@@ -44,13 +44,5 @@ if __name__ == '__main__':
         # to verify the signature
         decrypted_block = unsign(int(block), e, n_a)
         # since each block is pre and post padded with a 1, ignore it.
-        decrypted_msg += bin(decrypted_block)[3:-1]
-
-    # convert the binary string to a string of ASCII characters
-    decrypted_msg = bin2str(decrypted_msg)
-    if decrypted_msg is None:
-        # if the decrypted message is None, then the message was
-        # not properly decrypted or the signature was invalid
-        print("Message not verfied!")
-    else:
-        print(decrypted_msg)
+        decrypted_msg += bin2str(bin(decrypted_block)[2:])
+    print(decrypted_msg)

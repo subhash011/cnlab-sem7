@@ -3,8 +3,6 @@ from utils import *
 from utils import generate_prime
 from math import gcd
 
-k = 1024
-
 
 def extended_gcd(a, b):
     """
@@ -42,14 +40,14 @@ def generate_rsa(p, q):
     # the totient of n is (p-1)*(q-1)
     totient = (p - 1) * (q - 1)
     # the public exponent (used in encryption)
-    e = 5
-    while e < totient:
+    d = 5
+    while d < totient:
         # find a "e" that is relatively prime to z
-        if gcd(e, totient) == 1:
+        if gcd(d, totient) == 1:
             break
-        e += 1
+        d += 1
     # d is the secret exponent (used in decryption)
-    d = modular_inverse(e, totient)
+    e = modular_inverse(d, totient)
     return n, e, d
 
 
@@ -58,8 +56,8 @@ def generate_primes():
     Returns two primes p and q of k/2 bits each.
     """
     # generate two primes of length k/2 bits each.
-    p = generate_prime(k//2)
-    q = generate_prime(k//2)
+    p = generate_prime(modulus_size//2)
+    q = generate_prime(modulus_size//2, p)
     return p, q
 
 
@@ -80,6 +78,9 @@ def write_key_user(username):
 
 
 if __name__ == '__main__':
+    if modulus_size < 32:
+        print("Modulus size must be at least 32 bits.")
+        exit(1)
     # write keys for A to A.pub and A.pri
     write_key_user('A')
     # write keys for B to B.pub and B.pri
