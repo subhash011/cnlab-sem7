@@ -43,6 +43,9 @@ if __name__ == '__main__':
         # since each block was signed, we use the unsign function
         # to verify the signature
         decrypted_block = unsign(int(block), e, n_a)
+        msg_str = bin2str(bin(decrypted_block)[2:])
+        if msg_str is None:
+            print("Message not verified!")
         # since each block is pre and post padded with a 1, ignore it.
-        decrypted_msg += bin2str(bin(decrypted_block)[2:])
+        decrypted_msg += msg_str
     print(decrypted_msg)
