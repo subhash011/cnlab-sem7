@@ -10,7 +10,7 @@ def str2int(s):
 def msg2blocks(m):
     """
     Since the message can be of arbitrary length, we need to split it into blocks
-    of size k such that 2^k is less than the modulus n.
+    s.t each block is smaller than the modulus size.
     """
     n_bytes = modulus_size // 16
     for i in range(0, len(m), n_bytes):
@@ -20,6 +20,8 @@ def msg2blocks(m):
 def encrypt(m, e, n): return pow(m, e, n)
 
 
+# this function is similar to the decrypt function, it has
+# been renamed for clarity
 def sign(m, d, n): return pow(m, d, n)
 
 
@@ -32,7 +34,9 @@ if __name__ == '__main__':
     # get the message
     with open('message.txt', 'r') as f:
         msg = f.read()
-
+    # append the public key of B to the message
+    # this allows B to verify the signature
+    msg += ":" + str((e, n_b))
     encrypted_msg = ""
     for block in msg2blocks(msg):
         # sign the block
