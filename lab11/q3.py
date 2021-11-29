@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     decrypted_msg = ""
     encrypted_m = lines[0].split()
-    for i, block in enumerate(encrypted_m):
+    for block in encrypted_m:
         # for each encrypted block, decrypt it
         block = decrypt(int(block), d_b, n_b)
         # since each block was signed, we use the unsign function
