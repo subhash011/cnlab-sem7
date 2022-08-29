@@ -1,9 +1,5 @@
 **/*VirtualBox
 **/VMImages
-**/connect.*
-**/setupVMs.*
-**/startVMs.*
-**/stopVMs.*
 **/*.docx
 **/*.odt
 **/*.drawio
